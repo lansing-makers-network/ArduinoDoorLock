@@ -29,6 +29,7 @@
 #define DIR_CLOSE 7     //PIN to CLOSE direction on motor
 #define CLOSE_COMP 8    //PIN to MAX CLOSE contact
 #define OPEN_COMP 9     //PIN to MAX OPEN contact
+#define KEEP_OPEN 10    //PIN to KEEP OPEN switch.
 
 #define START_BYTE 0x0A 
 #define STOP_BYTE 0x0D
@@ -50,6 +51,7 @@ void setup()
   
   pinMode(OPEN_COMP,INPUT);
   pinMode(CLOSE_COMP,INPUT);
+  pinMode(KEEP_OPEN, INPUT);
   
   digitalWrite(RFID_ENABLE, LOW);    
   resetLEDS();
@@ -149,7 +151,6 @@ void programKey()
   digitalWrite(BLUE_LED, LOW);
   clearSerialBuffer();
   digitalWrite(RFID_ENABLE, LOW);     
-
   while(cardProgramming)
   {
    rfidByte = Serial.read();
@@ -160,13 +161,12 @@ void programKey()
    if (rfidByte == STOP_BYTE)
    {
      tagRead = false;
-     Serial.println(']');
      digitalWrite(RFID_ENABLE, HIGH);
 
      // write card to memory
      numTagInMem++;
      EEPROM.write(0,numTagInMem);
-     for (int loc=0; loc <= 10; loc++)
+     for (int loc=0; loc < 10; loc++)
      {
        EEPROM.write((numTagInMem * 10)+loc+1,curTag.charAt(loc));
      }    
@@ -182,13 +182,11 @@ void programKey()
    }
    if (tagRead)
    {
-      Serial.print(char(rfidByte));
       curTag = String(curTag + char(rfidByte));
    }
    if (rfidByte == START_BYTE)
    {
      tagRead = true;
-     Serial.print("NEW TAG: [");
      curTag = "";
    }
   } 
@@ -196,13 +194,18 @@ void programKey()
 
 void clearSerialBuffer()
 {
-     while (Serial.read() >= 0)
-       ; // clear read buffer
+   while (Serial.read() >= 0)
+     ; // clear read buffer
 }
 
 void openDoor()
 {
   
   // do something to open the door
+  
+}
+
+void closeDoor()
+{
   
 }
