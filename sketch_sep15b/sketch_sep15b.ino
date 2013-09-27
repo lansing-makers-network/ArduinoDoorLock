@@ -18,15 +18,15 @@
 */
 
 #include <EEPROM.h>
+#include <SoftwareSerial.h>
 
-     // PIN RFID SOUT     Must be on Arduino Pin 0
-
+#define RFID_SOUT 11    //PIN to RDID SOUT Pin
 #define RFID_ENABLE 2   //PIN to RFID Enable Pin
 #define RED_LED 5       //PIN to RGB LED Red Pin
 #define GREEN_LED 4     //PIN to RGB LED Green Pin
 #define BLUE_LED 3      //PIN to RGB LED Blue Pin
-#define DIR_OPEN 6      //PIN to OPEN direction on motor
-#define DIR_CLOSE 7     //PIN to CLOSE direction on motor
+#define DIR 6           //PIN to OPEN direction on motor
+#define MOTOR_CONT 7    //PIN TO Motor Control
 #define CLOSE_COMP 8    //PIN to MAX CLOSE contact
 #define OPEN_COMP 9     //PIN to MAX OPEN contact
 #define KEEP_OPEN 10    //PIN to KEEP OPEN switch.
@@ -44,10 +44,12 @@
  boolean tagRead = false;
  String curTag;
  int numTagInMem;
+ 
+ SoftwareSerial RFID(RFID_SOUT, 12);
 
 void setup() 
 { 
-  Serial.begin(2400);    //RFID Reader is locked to 2400 baud
+  RFID.begin(2400);    //RFID Reader is locked to 2400 baud
   
   pinMode(OPEN_COMP,INPUT);
   pinMode(CLOSE_COMP,INPUT);
@@ -56,14 +58,15 @@ void setup()
   digitalWrite(RFID_ENABLE, LOW);    
   resetLEDS();
   
-  numTagInMem = EEPROM.read(0);
+  //numTagInMem = EEPROM.read(0);
+  numTagInMem = 0;
 }
 
 void loop()
 {
-  while(Serial.available() > 0)
+  while(RFID.available() > 0)
   {
-   rfidByte = Serial.read();
+   rfidByte = RFID.read();
    if (rfidByte == STOP_BYTE)
    {
      tagRead = false;
@@ -128,12 +131,13 @@ void checkAccess()
   if (foundKey)
  {
   openDoor();
+  delay(15000);
+  closeDoor();
  }
   else
  {
     digitalWrite(RED_LED, HIGH); 
  } 
-  
   
 }
 
@@ -141,7 +145,7 @@ void programKey()
 {
   boolean cardProgramming = true;
   digitalWrite(RFID_ENABLE, HIGH);
-  Serial.flush();
+  RFID.flush();
   digitalWrite(BLUE_LED, HIGH);
   delay(500);
   digitalWrite(BLUE_LED, LOW);
@@ -153,7 +157,7 @@ void programKey()
   digitalWrite(RFID_ENABLE, LOW);     
   while(cardProgramming)
   {
-   rfidByte = Serial.read();
+   rfidByte = RFID.read();
    if (rfidByte == -1)
    {
      continue;
@@ -194,18 +198,22 @@ void programKey()
 
 void clearSerialBuffer()
 {
-   while (Serial.read() >= 0)
+   while (RFID.read() >= 0)
      ; // clear read buffer
 }
 
 void openDoor()
 {
-  
-  // do something to open the door
-  
+   digitalWrite(DIR,HIGH);
+   digitalWrite(MOTOR_CONT, HIGH);
+   delay(1000);
+   digitalWrite(MOTOR_CONT, LOW);  
 }
 
 void closeDoor()
 {
-  
+   digitalWrite(DIR,LOW);
+   digitalWrite(MOTOR_CONT, HIGH);
+   delay(1000);
+   digitalWrite(MOTOR_CONT, LOW);
 }
