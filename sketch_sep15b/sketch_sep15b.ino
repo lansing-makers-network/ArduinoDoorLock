@@ -50,16 +50,27 @@
 void setup() 
 { 
   RFID.begin(2400);    //RFID Reader is locked to 2400 baud
+  Serial.begin(9600);
   
   pinMode(OPEN_COMP,INPUT);
   pinMode(CLOSE_COMP,INPUT);
   pinMode(KEEP_OPEN, INPUT);
+  pinMode(RFID_ENABLE, OUTPUT);
+  pinMode(DIR, OUTPUT);
+  pinMode(MOTOR_CONT, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(BLUE_LED, OUTPUT);
   
   digitalWrite(RFID_ENABLE, LOW);    
   resetLEDS();
   
-  //numTagInMem = EEPROM.read(0);
-  numTagInMem = 0;
+  numTagInMem = EEPROM.read(0);
+  //numTagInMem = 0;
+  
+  Serial.print("I know of ");
+  Serial.print(numTagInMem);
+  Serial.println(" authorized keys.");
 }
 
 void loop()
@@ -69,6 +80,7 @@ void loop()
    rfidByte = RFID.read();
    if (rfidByte == STOP_BYTE)
    {
+     Serial.println("]");
      tagRead = false;
      digitalWrite(RFID_ENABLE, HIGH);
      checkAccess();
@@ -80,12 +92,46 @@ void loop()
    if (tagRead)
    {
       curTag = String(curTag + char(rfidByte));
+      Serial.print(char(rfidByte));
    }
    if (rfidByte == START_BYTE)
    {
      tagRead = true;
      curTag = "";
+     Serial.print("Read Card [");
    }
+  }
+  if(Serial.available() > 0)
+  {
+   switch(Serial.read())
+   {
+     case 'r':
+       Serial.println("-----------------------------");
+       Serial.print("Number of tags in Memory : ");
+       Serial.println(numTagInMem);
+       Serial.println("-----------------------------");
+       Serial.print("Magic Key: ");
+       for (int loc=0; loc < 10; loc++)
+       {
+          Serial.print(char(EEPROM.read(1+loc)));
+       }
+       Serial.println("");
+       Serial.println("-----------------------------");
+       for (int i=1; i <= numTagInMem; i++)
+       {
+        Serial.print(i);
+        Serial.print(" | ");
+        for (int loc=0; loc < 10; loc++)
+        {
+         Serial.print(char(EEPROM.read((i*10)+1+loc)));
+         }
+         Serial.println("");
+       }
+       
+     break;
+   }
+   while (RFID.read() >= 0)
+    ; // clear read buffer 
   }
 }
 
@@ -113,7 +159,7 @@ void checkAccess()
      programKey();
   }  
   
-  for (int i=1; i < numTagInMem; i++)
+  for (int i=1; i <= numTagInMem; i++)
   {
     memTag = "";
     for (int loc=0; loc < 10; loc++)
@@ -169,6 +215,11 @@ void programKey()
 
      // write card to memory
      numTagInMem++;
+     
+     Serial.print("Adding the following key to memory location ");
+     Serial.println(numTagInMem);
+     Serial.println(curTag);
+     
      EEPROM.write(0,numTagInMem);
      for (int loc=0; loc < 10; loc++)
      {
@@ -204,7 +255,8 @@ void clearSerialBuffer()
 
 void openDoor()
 {
-   digitalWrite(DIR,HIGH);
+   Serial.println("Opening Door");
+   digitalWrite(DIR,LOW);
    digitalWrite(MOTOR_CONT, HIGH);
    delay(1000);
    digitalWrite(MOTOR_CONT, LOW);  
@@ -212,7 +264,8 @@ void openDoor()
 
 void closeDoor()
 {
-   digitalWrite(DIR,LOW);
+   Serial.println("Closing Door");
+   digitalWrite(DIR,HIGH);
    digitalWrite(MOTOR_CONT, HIGH);
    delay(1000);
    digitalWrite(MOTOR_CONT, LOW);
