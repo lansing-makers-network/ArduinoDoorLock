@@ -44,6 +44,8 @@
  boolean tagRead = false;
  String curTag;
  int numTagInMem;
+ char resp;
+ int respValue;
  
  SoftwareSerial RFID(RFID_SOUT, 12);
 
@@ -68,9 +70,7 @@ void setup()
   numTagInMem = EEPROM.read(0);
   //numTagInMem = 0;
   
-  Serial.print("I know of ");
-  Serial.print(numTagInMem);
-  Serial.println(" authorized keys.");
+  Serial.println("Lansing Makers Network Door Access System.  Valid commands are (r,i,d,h)");
 }
 
 void loop()
@@ -103,6 +103,7 @@ void loop()
   }
   if(Serial.available() > 0)
   {
+   digitalWrite(BLUE_LED, HIGH);
    switch(Serial.read())
    {
      case 'r':
@@ -127,11 +128,72 @@ void loop()
          }
          Serial.println("");
        }
-       
-     break;
+       break;
+     case 'i':
+       while (Serial.read() >= 0)
+        ; // clear read buffer 
+       Serial.println("Are you sure you wish to re-initilze the database?  (y/n)");
+       resp = Serial.read();
+       if (resp == 'y')
+       {
+          Serial.print("Re-Initilizing database....  ");
+          numTagInMem = 0;
+          EEPROM.write(0,numTagInMem);
+          delay(1000);
+          Serial.println("DONE!");
+       }
+       else
+       {
+         delay(1000); 
+         Serial.println("Aborted."); 
+       }
+       break;
+     case 'd':
+       while (Serial.read() >= 0)
+        ; // clear read buffer 
+       respValue = 0;
+       Serial.print("Enter the index of the card you wish to have removed from the database. [1-");
+       Serial.print(numTagInMem);
+       Serial.println("] :");
+       while(true)
+       {
+          resp = Serial.read();
+          if(resp>47 && resp<58)
+          {
+            // we have a valid number
+            respValue = ((respValue * 10) + (resp - 48));
+          }
+          if (resp == 13)
+          {
+            // number was finished
+            break;
+          }
+       }
+       if(respValue > numTagInMem)
+       {
+         Serial.println("The index number is not value.  No tags have been deleted.");
+       }
+       else
+       {
+         Serial.print("Removing door code :");
+         for (int loc=0; loc < 10; loc++)
+         {
+          Serial.print(char(EEPROM.read((respValue*10)+1+loc)));
+         }
+         Serial.println("");
+        // need to actually delete the item from the array here.         
+       }
+       break;
+     case 'h':
+       Serial.println("[r] Read database");
+       Serial.println("[i] Init database");
+       Serial.println("[d] Delete item from database");
+       break;
    }
-   while (RFID.read() >= 0)
+   while (Serial.read() >= 0)
     ; // clear read buffer 
+    
+   resetLEDS();
   }
 }
 
