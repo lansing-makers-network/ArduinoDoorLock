@@ -133,6 +133,10 @@ void loop()
        while (Serial.read() >= 0)
         ; // clear read buffer 
        Serial.println("Are you sure you wish to re-initilze the database?  (y/n)");
+       while (Serial.available() == 0)
+       {
+          //wait. 
+       }
        resp = Serial.read();
        if (resp == 'y')
        {
@@ -154,7 +158,7 @@ void loop()
        respValue = 0;
        Serial.print("Enter the index of the card you wish to have removed from the database. [1-");
        Serial.print(numTagInMem);
-       Serial.println("] :");
+       Serial.println("].  Terminate with a dot (.)  Use 99 to cancel.");
        while(true)
        {
           resp = Serial.read();
@@ -163,7 +167,7 @@ void loop()
             // we have a valid number
             respValue = ((respValue * 10) + (resp - 48));
           }
-          if (resp == 13)
+          if (resp == 46)
           {
             // number was finished
             break;
@@ -185,6 +189,9 @@ void loop()
        }
        break;
      case 'h':
+       Serial.println("-----------------------------");
+       Serial.println("Door Access Admin Application");
+       Serial.println("-----------------------------");
        Serial.println("[r] Read database");
        Serial.println("[i] Init database");
        Serial.println("[d] Delete item from database");
@@ -317,7 +324,7 @@ void clearSerialBuffer()
 
 void openDoor()
 {
-   Serial.println("Opening Door");
+   Serial.println("Unlatching Door");
    digitalWrite(DIR,LOW);
    digitalWrite(MOTOR_CONT, HIGH);
    delay(1000);
@@ -326,7 +333,7 @@ void openDoor()
 
 void closeDoor()
 {
-   Serial.println("Closing Door");
+   Serial.println("Latching Door");
    digitalWrite(DIR,HIGH);
    digitalWrite(MOTOR_CONT, HIGH);
    delay(1000);
