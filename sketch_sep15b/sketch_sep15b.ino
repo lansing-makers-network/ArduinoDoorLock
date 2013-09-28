@@ -152,6 +152,12 @@ void loop()
          Serial.println("Aborted."); 
        }
        break;
+     case 'o':
+       openDoor();
+       break;
+     case 'c':
+       closeDoor();
+       break;         
      case 'd':
        while (Serial.read() >= 0)
         ; // clear read buffer 
@@ -195,6 +201,8 @@ void loop()
        Serial.println("[r] Read database");
        Serial.println("[i] Init database");
        Serial.println("[d] Delete item from database");
+       Serial.println("[o] Open Door");
+       Serial.println("[c] Close Door");
        break;
    }
    while (Serial.read() >= 0)
