@@ -46,6 +46,7 @@
  int numTagInMem;
  char resp;
  int respValue;
+ boolean keepOpenLock = false;
  
  SoftwareSerial RFID(RFID_SOUT, 12);
 
@@ -70,7 +71,7 @@ void setup()
   numTagInMem = EEPROM.read(0);
   //numTagInMem = 0;
   
-  Serial.println("Lansing Makers Network Door Access System.  Valid commands are (r,i,d,h)");
+  Serial.println("Lansing Makers Network Door Access System.  Valid commands are (r,i,d,h,o,c)");
 }
 
 void loop()
@@ -100,6 +101,20 @@ void loop()
      curTag = "";
      Serial.print("Read Card [");
    }
+  }
+  if(digitalRead(KEEP_OPEN) != keepOpenLock)
+  {
+    if(digitalRead(KEEP_OPEN))
+    {
+      openDoor();
+      keepOpenLock = true; 
+    }
+    else
+    {
+      closeDoor();
+      keepOpenLock = false;
+    }
+    delay(5000);
   }
   if(Serial.available() > 0)
   {
