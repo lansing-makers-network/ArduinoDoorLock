@@ -348,16 +348,16 @@ void clearSerialBuffer()
 void openDoor()
 {
    Serial.println("Unlatching Door");
-   digitalWrite(DIR,LOW);
+   digitalWrite(DIR,HIGH);
    digitalWrite(MOTOR_CONT, HIGH);
-   delay(1000);
+   delay(2000);
    digitalWrite(MOTOR_CONT, LOW);  
 }
 
 void closeDoor()
 {
    Serial.println("Latching Door");
-   digitalWrite(DIR,HIGH);
+   digitalWrite(DIR,LOW);
    digitalWrite(MOTOR_CONT, HIGH);
    delay(1000);
    digitalWrite(MOTOR_CONT, LOW);
