@@ -27,12 +27,12 @@
 #define BLUE_LED 3      //PIN to RGB LED Blue Pin
 #define DIR 6           //PIN to OPEN direction on motor
 #define MOTOR_CONT 7    //PIN TO Motor Control
-#define CLOSE_COMP 8    //PIN to MAX CLOSE contact
-#define OPEN_COMP 9     //PIN to MAX OPEN contact
+#define CLOSE_COMP 8    //PIN to MAX CLOSE contact  **NOT USED
+#define OPEN_COMP 9     //PIN to MAX OPEN contact   **NOT USED
 #define KEEP_OPEN 10    //PIN to KEEP OPEN switch.
 
-#define START_BYTE 0x0A 
-#define STOP_BYTE 0x0D
+#define START_BYTE 0x0A  //RFID Start code.
+#define STOP_BYTE 0x0D   //RFID Stop code.
 
 // EEPROM Memory Space is defined as :
 // -------------   ------  ---------------------------------------------------
@@ -40,13 +40,9 @@
 // [0001 - 0011]   String  Magic Card used to reprogram Arduino
 // [0012 - 1023]   String@ IDs of authorized cards (each card taking 10 bytes)  
 
- int rfidByte;
- boolean tagRead = false;
- String curTag;
- int numTagInMem;
- char resp;
- int respValue;
- boolean keepOpenLock = false;
+ String curTag;         //Last card number that was read.
+ int numTagInMem;       //Number of cards in the DB.
+ boolean keepOpenLock = false;   //Current state of the keep-on switch
  
  SoftwareSerial RFID(RFID_SOUT, 12);
 
@@ -65,7 +61,7 @@ void setup()
   pinMode(GREEN_LED, OUTPUT);
   pinMode(BLUE_LED, OUTPUT);
   
-  digitalWrite(RFID_ENABLE, LOW);    
+  digitalWrite(RFID_ENABLE, LOW);    //prepare RFID reader to accept data
   resetLEDS();
   
   numTagInMem = EEPROM.read(0);
@@ -118,6 +114,7 @@ void loop()
 
 void resetLEDS()
 {
+  // Reset the LEDs to their extinguished state.
   digitalWrite(RED_LED, LOW);
   digitalWrite(GREEN_LED, LOW);
   digitalWrite(BLUE_LED, LOW);  
@@ -129,6 +126,9 @@ boolean readCard()
   // we expect this function to be in a loop
   //
   // stores read card as a String in the "curTag" global variable.
+  
+  boolean tagRead = false;
+  int rfidByte;
   
   if(RFID.available() > 0)
   {
@@ -156,6 +156,10 @@ boolean readCard()
 
 boolean checkAccess(String tag, boolean checkMagic)
 {
+  //  checks the database if the card is "valid".  The tag passed in is the one checked.
+  //  the second boolean is if we should check for the magic card. we may want to ignore it.
+  //  returns if the card is valid.  
+
   String memTag;
   boolean foundKey = false;
   // tag number 0 is the magic key
@@ -165,7 +169,7 @@ boolean checkAccess(String tag, boolean checkMagic)
      memTag = String(memTag + char(EEPROM.read(1+loc)));
   }
 
-  if ((curTag == memTag) && (checkMagic))
+  if ((tag == memTag) && (checkMagic))
   {
      // we have our magic "programming key"
      programKey();
@@ -178,20 +182,23 @@ boolean checkAccess(String tag, boolean checkMagic)
     {
        memTag = String(memTag + char(EEPROM.read((i*10)+1+loc)));
     }
-    if (curTag == memTag)
+    if (tag == memTag)
     {
       // we have a tag in memory
       foundKey = true;
     }
   }
-  
   return foundKey;
   
 }
 
 void programKey()
 {
-  boolean cardProgramming = true;
+  // we saw the magic card, and now we need to either add or remove the following card.
+  // it will blink 3 times blue to indicate programming mode.
+  
+  String memTag;
+  
   digitalWrite(RFID_ENABLE, HIGH);
   RFID.flush();
   digitalWrite(BLUE_LED, HIGH);
@@ -203,32 +210,54 @@ void programKey()
   digitalWrite(BLUE_LED, LOW);
   clearSerialBuffer();
   digitalWrite(RFID_ENABLE, LOW);     
-  while(cardProgramming)
-  {
-   rfidByte = RFID.read();
-   if (rfidByte == -1)
-   {
-     continue;
-   }
-   if (rfidByte == STOP_BYTE)
-   {
-     tagRead = false;
-     digitalWrite(RFID_ENABLE, HIGH);
 
-     // write card to memory
+  while (!readCard())
+  {
+    //wait for the card to be read 
+  }
+
+  digitalWrite(RFID_ENABLE, HIGH);
+  if (checkAccess(curTag,false))
+  {
+    //the card already exists in the db.  remove it. 
+     digitalWrite(RED_LED, HIGH);
+     delay(500);
+     digitalWrite(RED_LED, LOW);
+     delay(500);
+     digitalWrite(RED_LED, HIGH);
+     delay(500);
+     digitalWrite(RED_LED, LOW);
+     
+     for (int i=1; i <= numTagInMem; i++)
+     {
+        memTag = "";
+        for (int loc=0; loc < 10; loc++)
+        {
+            memTag = String(memTag + char(EEPROM.read((i*10)+1+loc)));
+        }
+        if (curTag == memTag)
+        {
+           // we now have the index of the card in memory.
+           for (int loc=0; loc < 10; loc++)
+           {
+            EEPROM.write((i*10)+loc+1,'*');  //replace selected tag with *s
+           }  
+        }
+      }
+  }
+  else
+  {
+    //the card is new. add it.
      numTagInMem++;
      
-     Serial.print("Adding the following key to memory location ");
+     Serial.print("Adding key to memory location ");
      Serial.println(numTagInMem);
-     Serial.println(curTag);
      
      EEPROM.write(0,numTagInMem);
      for (int loc=0; loc < 10; loc++)
      {
        EEPROM.write((numTagInMem * 10)+loc+1,curTag.charAt(loc));
      }    
-     cardProgramming = false;
-
      digitalWrite(GREEN_LED, HIGH);
      delay(500);
      digitalWrite(GREEN_LED, LOW);
@@ -236,21 +265,14 @@ void programKey()
      digitalWrite(GREEN_LED, HIGH);
      delay(500);
      digitalWrite(GREEN_LED, LOW);
-   }
-   if (tagRead)
-   {
-      curTag = String(curTag + char(rfidByte));
-   }
-   if (rfidByte == START_BYTE)
-   {
-     tagRead = true;
-     curTag = "";
-   }
   } 
 }
 
 void serialMenu()
 {
+   char resp;
+   int respValue;
+ 
    digitalWrite(BLUE_LED, HIGH);
    switch(Serial.read())
    {
@@ -371,6 +393,7 @@ void clearSerialBuffer()
 
 void openDoor()
 {
+  // unlatch the door.  
    Serial.println("Unlatching Door");
    digitalWrite(DIR,HIGH);
    digitalWrite(MOTOR_CONT, HIGH);
@@ -380,6 +403,7 @@ void openDoor()
 
 void closeDoor()
 {
+  // re-latch the door
    Serial.println("Latching Door");
    digitalWrite(DIR,LOW);
    digitalWrite(MOTOR_CONT, HIGH);
