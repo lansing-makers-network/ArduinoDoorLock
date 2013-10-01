@@ -75,19 +75,69 @@ void setup()
 
 void loop()
 {
-  while(RFID.available() > 0)
+  if(readCard())
+  {
+     digitalWrite(RFID_ENABLE, HIGH);
+     if (checkAccess(curTag,true))
+     {
+       digitalWrite(GREEN_LED, HIGH); 
+       openDoor();
+       delay(15000);  //wait 15 seconds before locking door again
+       closeDoor();
+     }
+     else
+     {
+       digitalWrite(RED_LED, HIGH);
+       delay(2000); 
+     }
+     delay(1000);
+     clearSerialBuffer();     
+     resetLEDS();
+     digitalWrite(RFID_ENABLE, LOW);
+  }
+
+  if(digitalRead(KEEP_OPEN) != keepOpenLock)
+  {
+    if(digitalRead(KEEP_OPEN))
+    {
+      openDoor();
+      keepOpenLock = true; 
+    }
+    else
+    {
+      closeDoor();
+      keepOpenLock = false;
+    }
+    delay(2000); //debounce the switch when it is floating.
+  }
+  if(Serial.available() > 0)
+  {
+    serialMenu();
+  }
+}
+
+void resetLEDS()
+{
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(GREEN_LED, LOW);
+  digitalWrite(BLUE_LED, LOW);  
+}
+
+boolean readCard()
+{
+  // returns true if a card was successfully read.  returns false in all other senerios.
+  // we expect this function to be in a loop
+  //
+  // stores read card as a String in the "curTag" global variable.
+  
+  if(RFID.available() > 0)
   {
    rfidByte = RFID.read();
    if (rfidByte == STOP_BYTE)
    {
      Serial.println("]");
      tagRead = false;
-     digitalWrite(RFID_ENABLE, HIGH);
-     checkAccess();
-     delay(2000);
-     clearSerialBuffer();     
-     resetLEDS();
-     digitalWrite(RFID_ENABLE, LOW);
+     return true;
    }
    if (tagRead)
    {
@@ -101,22 +151,106 @@ void loop()
      Serial.print("Read Card [");
    }
   }
-  if(digitalRead(KEEP_OPEN) != keepOpenLock)
+  return false;
+}
+
+boolean checkAccess(String tag, boolean checkMagic)
+{
+  String memTag;
+  boolean foundKey = false;
+  // tag number 0 is the magic key
+
+  for (int loc=0; loc < 10; loc++)
   {
-    if(digitalRead(KEEP_OPEN))
-    {
-      openDoor();
-      keepOpenLock = true; 
-    }
-    else
-    {
-      closeDoor();
-      keepOpenLock = false;
-    }
-    delay(5000);
+     memTag = String(memTag + char(EEPROM.read(1+loc)));
   }
-  if(Serial.available() > 0)
+
+  if ((curTag == memTag) && (checkMagic))
   {
+     // we have our magic "programming key"
+     programKey();
+  }  
+  
+  for (int i=1; i <= numTagInMem; i++)
+  {
+    memTag = "";
+    for (int loc=0; loc < 10; loc++)
+    {
+       memTag = String(memTag + char(EEPROM.read((i*10)+1+loc)));
+    }
+    if (curTag == memTag)
+    {
+      // we have a tag in memory
+      foundKey = true;
+    }
+  }
+  
+  return foundKey;
+  
+}
+
+void programKey()
+{
+  boolean cardProgramming = true;
+  digitalWrite(RFID_ENABLE, HIGH);
+  RFID.flush();
+  digitalWrite(BLUE_LED, HIGH);
+  delay(500);
+  digitalWrite(BLUE_LED, LOW);
+  delay(200);
+  digitalWrite(BLUE_LED, HIGH);
+  delay(500);
+  digitalWrite(BLUE_LED, LOW);
+  clearSerialBuffer();
+  digitalWrite(RFID_ENABLE, LOW);     
+  while(cardProgramming)
+  {
+   rfidByte = RFID.read();
+   if (rfidByte == -1)
+   {
+     continue;
+   }
+   if (rfidByte == STOP_BYTE)
+   {
+     tagRead = false;
+     digitalWrite(RFID_ENABLE, HIGH);
+
+     // write card to memory
+     numTagInMem++;
+     
+     Serial.print("Adding the following key to memory location ");
+     Serial.println(numTagInMem);
+     Serial.println(curTag);
+     
+     EEPROM.write(0,numTagInMem);
+     for (int loc=0; loc < 10; loc++)
+     {
+       EEPROM.write((numTagInMem * 10)+loc+1,curTag.charAt(loc));
+     }    
+     cardProgramming = false;
+
+     digitalWrite(GREEN_LED, HIGH);
+     delay(500);
+     digitalWrite(GREEN_LED, LOW);
+     delay(500);
+     digitalWrite(GREEN_LED, HIGH);
+     delay(500);
+     digitalWrite(GREEN_LED, LOW);
+   }
+   if (tagRead)
+   {
+      curTag = String(curTag + char(rfidByte));
+   }
+   if (rfidByte == START_BYTE)
+   {
+     tagRead = true;
+     curTag = "";
+   }
+  } 
+}
+
+void serialMenu()
+{
    digitalWrite(BLUE_LED, HIGH);
    switch(Serial.read())
    {
@@ -225,124 +359,12 @@ void loop()
    while (Serial.read() >= 0)
     ; // clear read buffer 
     
-   resetLEDS();
-  }
-}
-
-void resetLEDS()
-{
-  digitalWrite(RED_LED, LOW);
-  digitalWrite(GREEN_LED, LOW);
-  digitalWrite(BLUE_LED, LOW);  
-}
-
-void checkAccess()
-{
-  String memTag;
-  boolean foundKey = false;
-  // tag number 0 is the magic key
-
-  for (int loc=0; loc < 10; loc++)
-  {
-     memTag = String(memTag + char(EEPROM.read(1+loc)));
-  }
-
-  if (curTag == memTag)
-  {
-     // we have our magic "programming key"
-     programKey();
-  }  
-  
-  for (int i=1; i <= numTagInMem; i++)
-  {
-    memTag = "";
-    for (int loc=0; loc < 10; loc++)
-    {
-       memTag = String(memTag + char(EEPROM.read((i*10)+1+loc)));
-    }
-    if (curTag == memTag)
-    {
-      // we have a tag in memory
-      digitalWrite(GREEN_LED, HIGH); 
-      foundKey = true;
-    }
-  }
-  
-  if (foundKey)
- {
-  openDoor();
-  delay(15000);
-  closeDoor();
- }
-  else
- {
-    digitalWrite(RED_LED, HIGH); 
- } 
-  
-}
-
-void programKey()
-{
-  boolean cardProgramming = true;
-  digitalWrite(RFID_ENABLE, HIGH);
-  RFID.flush();
-  digitalWrite(BLUE_LED, HIGH);
-  delay(500);
-  digitalWrite(BLUE_LED, LOW);
-  delay(200);
-  digitalWrite(BLUE_LED, HIGH);
-  delay(500);
-  digitalWrite(BLUE_LED, LOW);
-  clearSerialBuffer();
-  digitalWrite(RFID_ENABLE, LOW);     
-  while(cardProgramming)
-  {
-   rfidByte = RFID.read();
-   if (rfidByte == -1)
-   {
-     continue;
-   }
-   if (rfidByte == STOP_BYTE)
-   {
-     tagRead = false;
-     digitalWrite(RFID_ENABLE, HIGH);
-
-     // write card to memory
-     numTagInMem++;
-     
-     Serial.print("Adding the following key to memory location ");
-     Serial.println(numTagInMem);
-     Serial.println(curTag);
-     
-     EEPROM.write(0,numTagInMem);
-     for (int loc=0; loc < 10; loc++)
-     {
-       EEPROM.write((numTagInMem * 10)+loc+1,curTag.charAt(loc));
-     }    
-     cardProgramming = false;
-
-     digitalWrite(GREEN_LED, HIGH);
-     delay(500);
-     digitalWrite(GREEN_LED, LOW);
-     delay(500);
-     digitalWrite(GREEN_LED, HIGH);
-     delay(500);
-     digitalWrite(GREEN_LED, LOW);
-   }
-   if (tagRead)
-   {
-      curTag = String(curTag + char(rfidByte));
-   }
-   if (rfidByte == START_BYTE)
-   {
-     tagRead = true;
-     curTag = "";
-   }
-  } 
+   resetLEDS();  
 }
 
 void clearSerialBuffer()
 {
+  // this replicates the .flush() function of Arduino < 1.0.3.  
    while (RFID.read() >= 0)
      ; // clear read buffer
 }
