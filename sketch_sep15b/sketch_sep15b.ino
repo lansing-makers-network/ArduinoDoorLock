@@ -69,7 +69,6 @@ void setup()
   resetLEDS();
   
   numTagInMem = EEPROM.read(0);
-  //numTagInMem = 0;
   
   Serial.println("Lansing Makers Network Door Access System.  Valid commands are (r,i,d,h,o,c)");
 }
@@ -206,7 +205,10 @@ void loop()
           Serial.print(char(EEPROM.read((respValue*10)+1+loc)));
          }
          Serial.println("");
-        // need to actually delete the item from the array here.         
+         for (int loc=0; loc < 10; loc++)
+         {
+            EEPROM.write((respValue*10)+loc+1,'*');  //replace selected tag with *s
+         }          
        }
        break;
      case 'h':
