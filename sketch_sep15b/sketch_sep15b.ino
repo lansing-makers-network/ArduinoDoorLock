@@ -43,7 +43,7 @@
  String curTag;         //Last card number that was read.
  int numTagInMem;       //Number of cards in the DB.
  boolean keepOpenLock = false;   //Current state of the keep-on switch
- 
+ boolean doorUnlocked = true; // Current state of the door.
  SoftwareSerial RFID(RFID_SOUT, 12);
 
 void setup() 
@@ -63,6 +63,18 @@ void setup()
   
   digitalWrite(RFID_ENABLE, LOW);    //prepare RFID reader to accept data
   resetLEDS();
+  
+  //On Startup, drive the motor to open door (since this is the only absolute state currently..)
+  digitalWrite(DIR,HIGH);
+  digitalWrite(MOTOR_CONT, HIGH);
+  delay(3000);
+  digitalWrite(MOTOR_CONT, LOW);
+  digitalWrite(DIR, LOW);
+  
+  //Lock the door and set the status boolean.
+  closeDoor();
+  doorUnlocked = false;  
+  
   
   numTagInMem = EEPROM.read(0);
   
