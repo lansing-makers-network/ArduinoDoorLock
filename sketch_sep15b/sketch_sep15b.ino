@@ -43,7 +43,6 @@
 
  String curTag;         //Last card number that was read.
  int numTagInMem;       //Number of cards in the DB.
- boolean keepOpenLock = false;   //Current state of the keep-on switch
  boolean doorUnlocked = true; // Current state of the door.
  boolean tagRead = false;
  SoftwareSerial RFID(RFID_SOUT, 12);
@@ -74,11 +73,9 @@ void setup()
   
   //Read the keep open switch and obey it
   keepOpenInput.update();
-  keepOpenLock = keepOpenInput.read();
-  if (!keepOpenLock) {
+  if (!keepOpenInput.read()) {
   	closeDoor();
   }
-  
   numTagInMem = EEPROM.read(0);
   
   
@@ -105,10 +102,10 @@ void loop()
      digitalWrite(RFID_ENABLE, LOW);
   }
   
-  if (keepOpenInput.update()) {
-  	keepOpenLock = keepOpenInput.read();
-  	if (keepOpenLock) 
-  	{
+  if (keepOpenInput.update()) 
+  {
+    if (keepOpenInput.read()) 
+    {
       openDoor();
     }
     else
