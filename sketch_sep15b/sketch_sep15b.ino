@@ -19,6 +19,7 @@
 
 #include <EEPROM.h>
 #include <SoftwareSerial.h>
+#include <Bounce.h>
 
 #define RFID_SOUT 11    //PIN to RDID SOUT Pin
 #define RFID_ENABLE 2   //PIN to RFID Enable Pin
@@ -46,6 +47,8 @@
  boolean doorUnlocked = true; // Current state of the door.
  SoftwareSerial RFID(RFID_SOUT, 12);
 
+ Bounce keepOpenInput = Bounce(KEEP_OPEN, 10);
+ 
 void setup() 
 { 
   RFID.begin(2400);    //RFID Reader is locked to 2400 baud
@@ -65,18 +68,19 @@ void setup()
   resetLEDS();
   
   //On Startup, drive the motor to open door (since this is the only absolute state currently..)
-  digitalWrite(DIR,HIGH);
-  digitalWrite(MOTOR_CONT, HIGH);
-  delay(3000);
-  digitalWrite(MOTOR_CONT, LOW);
-  digitalWrite(DIR, LOW);
+  openDoor(3000);
   
-  //Lock the door and set the status boolean.
-  closeDoor();
-  doorUnlocked = false;  
   
+  //Read the keep open switch and obey it
+  keepOpenInput.update();
+  keepOpenLock = keepOpenInput.read();
+  if (!keepOpenLock) {
+  	closeDoor();
+  }
   
   numTagInMem = EEPROM.read(0);
+  
+  
   
   Serial.println("Lansing Makers Network Door Access System.  Valid commands are (r,i,d,h,o,c)");
 }
@@ -86,37 +90,30 @@ void loop()
   if(readCard())
   {
      digitalWrite(RFID_ENABLE, HIGH);
-     if (checkAccess(curTag,true))
+     if ((!doorUnlocked) && checkAccess(curTag,true))
      {
-       digitalWrite(GREEN_LED, HIGH); 
        openDoor();
        delay(15000);  //wait 15 seconds before locking door again
        closeDoor();
      }
-     else
+     else 
      {
-       digitalWrite(RED_LED, HIGH);
-       delay(2000); 
+       delayAndBlink(2000, RED_LED);
      }
-     delay(1000);
      clearSerialBuffer();     
-     resetLEDS();
      digitalWrite(RFID_ENABLE, LOW);
   }
-
-  if(digitalRead(KEEP_OPEN) != keepOpenLock)
-  {
-    if(digitalRead(KEEP_OPEN))
-    {
+  
+  if (keepOpenInput.update()) {
+  	keepOpenLock = keepOpenInput.read();
+  	if (keepOpenLock) 
+  	{
       openDoor();
-      keepOpenLock = true; 
     }
     else
     {
       closeDoor();
-      keepOpenLock = false;
     }
-    delay(2000); //debounce the switch when it is floating.
   }
   if(Serial.available() > 0)
   {
@@ -403,22 +400,39 @@ void clearSerialBuffer()
      ; // clear read buffer
 }
 
-void openDoor()
+void openDoor(int driveTime = 2000)
 {
-  // unlatch the door.  
+   // unlatch the door.  
    Serial.println("Unlatching Door");
    digitalWrite(DIR,HIGH);
    digitalWrite(MOTOR_CONT, HIGH);
-   delay(2000);
-   digitalWrite(MOTOR_CONT, LOW);  
+   blinkAndDelay(driveTime, GREEN_LED);
+   digitalWrite(MOTOR_CONT, LOW);
+   digitalWrite(GREEN_LED, HIGH);
+   doorUnlocked = true;  
 }
 
-void closeDoor()
+void closeDoor(int driveTime = 1000)
 {
   // re-latch the door
    Serial.println("Latching Door");
    digitalWrite(DIR,LOW);
    digitalWrite(MOTOR_CONT, HIGH);
-   delay(1000);
+   delay(driveTime);
    digitalWrite(MOTOR_CONT, LOW);
+   resetLEDS();
+   doorUnlocked = false;
+}
+
+void blinkAndDelay(int delayTime, int pin) {
+	digitalWrite(pin, HIGH);
+	for (int i=0; i<delayTime; i++) {
+		if ((i % 500) == 0) {
+			digitalWrite(pin, HIGH);
+		} else if ((i % 250) == 0) {
+			digitalWrite(pin, LOW);
+		}
+		delay(250);
+		i = i + 250;
+	}
 }
