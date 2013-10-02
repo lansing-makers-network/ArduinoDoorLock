@@ -207,13 +207,7 @@ void programKey()
   
   digitalWrite(RFID_ENABLE, HIGH);
   RFID.flush();
-  digitalWrite(BLUE_LED, HIGH);
-  delay(500);
-  digitalWrite(BLUE_LED, LOW);
-  delay(200);
-  digitalWrite(BLUE_LED, HIGH);
-  delay(500);
-  digitalWrite(BLUE_LED, LOW);
+  blinkAndDelay(1250, BLUE_LED);
   clearSerialBuffer();
   digitalWrite(RFID_ENABLE, LOW);     
 
@@ -226,13 +220,7 @@ void programKey()
   if (checkAccess(curTag,false))
   {
     //the card already exists in the db.  remove it. 
-     digitalWrite(RED_LED, HIGH);
-     delay(500);
-     digitalWrite(RED_LED, LOW);
-     delay(500);
-     digitalWrite(RED_LED, HIGH);
-     delay(500);
-     digitalWrite(RED_LED, LOW);
+     blinkAndDelay(1500, RED_LED, 100);
      
      for (int i=1; i <= numTagInMem; i++)
      {
@@ -264,13 +252,7 @@ void programKey()
      {
        EEPROM.write((numTagInMem * 10)+loc+1,curTag.charAt(loc));
      }    
-     digitalWrite(GREEN_LED, HIGH);
-     delay(500);
-     digitalWrite(GREEN_LED, LOW);
-     delay(500);
-     digitalWrite(GREEN_LED, HIGH);
-     delay(500);
-     digitalWrite(GREEN_LED, LOW);
+     blinkAndDelay(500, GREEN_LED, 150);
   } 
 }
 
@@ -429,20 +411,24 @@ void closeDoor()
   closeDoor(1000);
 }
 
-void blinkAndDelay(int delayTime, int pin) 
+void blinkAndDelay(int delayTime, int pin, int blinkRate) 
 {
    digitalWrite(pin, HIGH);
-   for (int i=0; i<delayTime; i = i + 250) 
+   for (int i=0; i<delayTime; i = i + blinkRate) 
    {
-     if ((i % 500) == 0) 
+     if ((i % (blinkRate*2)) == 0) 
      {
       digitalWrite(pin, HIGH);
      } 
-     else if ((i % 250) == 0) 
+     else if ((i % blinkRate) == 0) 
      {
       digitalWrite(pin, LOW);
      }
-     delay(250);
+     delay(blinkRate);
    }
-   digitalWrite(pin, LOW;
+   digitalWrite(pin, LOW);
+}
+void blinkAndDelay(int delayTime, int pin) 
+{
+  blinkAndDelay(delayTime, pin, 250);
 }
