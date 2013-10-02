@@ -76,7 +76,7 @@ void setup()
   keepOpenInput.update();
   keepOpenLock = keepOpenInput.read();
   if (!keepOpenLock) {
-  	closeDoor(1000);
+  	closeDoor();
   }
   
   numTagInMem = EEPROM.read(0);
@@ -93,9 +93,9 @@ void loop()
      digitalWrite(RFID_ENABLE, HIGH);
      if ((!doorUnlocked) && checkAccess(curTag,true))
      {
-       openDoor(2000);
+       openDoor();
        delay(15000);  //wait 15 seconds before locking door again
-       closeDoor(1000);
+       closeDoor();
      }
      else 
      {
@@ -109,11 +109,11 @@ void loop()
   	keepOpenLock = keepOpenInput.read();
   	if (keepOpenLock) 
   	{
-      openDoor(2000);
+      openDoor();
     }
     else
     {
-      closeDoor(1000);
+      closeDoor();
     }
   }
   if(Serial.available() > 0)
@@ -332,10 +332,10 @@ void serialMenu()
        }
        break;
      case 'o':
-       openDoor(2000);
+       openDoor();
        break;
      case 'c':
-       closeDoor(1000);
+       closeDoor();
        break;         
      case 'd':
        while (Serial.read() >= 0)
@@ -400,6 +400,10 @@ void clearSerialBuffer()
      ; // clear read buffer
 }
 
+void openDoor() {
+  openDoor(2000);
+}
+
 void openDoor(int driveTime)
 {
    // unlatch the door.  
@@ -422,6 +426,10 @@ void closeDoor(int driveTime)
    digitalWrite(MOTOR_CONT, LOW);
    resetLEDS();
    doorUnlocked = false;
+}
+void closeDoor() 
+{
+  closeDoor(1000);
 }
 
 void blinkAndDelay(int delayTime, int pin) 
