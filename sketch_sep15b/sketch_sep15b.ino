@@ -444,4 +444,5 @@ void blinkAndDelay(int delayTime, int pin)
      }
      delay(250);
    }
+   digitalWrite(pin, LOW;
 }
