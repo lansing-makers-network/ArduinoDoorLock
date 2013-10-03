@@ -387,7 +387,7 @@ void openDoor(int driveTime)
 {
    // unlatch the door.  
    Serial.println("Unlatching Door");
-   digitalWrite(DIR,HIGH);
+   digitalWrite(DIR, HIGH);
    digitalWrite(MOTOR_CONT, HIGH);
    blinkAndDelay(driveTime, GREEN_LED);
    digitalWrite(MOTOR_CONT, LOW);
@@ -399,7 +399,7 @@ void closeDoor(int driveTime)
 {
   // re-latch the door
    Serial.println("Latching Door");
-   digitalWrite(DIR,LOW);
+   digitalWrite(DIR, LOW);
    digitalWrite(MOTOR_CONT, HIGH);
    delay(driveTime);
    digitalWrite(MOTOR_CONT, LOW);
@@ -424,7 +424,13 @@ void blinkAndDelay(int delayTime, int pin, int blinkRate)
      {
       digitalWrite(pin, LOW);
      }
-     delay(blinkRate);
+     if ((delayTime - i) < blinkRate) 
+     {
+       delay(delayTime - i);
+     } 
+     else {
+       delay(blinkRate);
+     }
    }
    digitalWrite(pin, LOW);
 }
