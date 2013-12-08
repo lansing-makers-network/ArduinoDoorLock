@@ -31,7 +31,7 @@
 #define CLOSE_COMP 8    //PIN to MAX CLOSE contact  **NOT USED
 #define OPEN_COMP 9     //PIN to MAX OPEN contact   **NOT USED
 #define KEEP_OPEN 10    //PIN to KEEP OPEN switch.
-#define COURTESY_LIGHT 12 //PIN to Courtesy Light
+
 #define START_BYTE 0x0A  //RFID Start code.
 #define STOP_BYTE 0x0D   //RFID Stop code.
 
@@ -44,7 +44,6 @@
  String curTag;         //Last card number that was read.
  int numTagInMem;       //Number of cards in the DB.
  boolean doorUnlocked = true; // Current state of the door.
- unsigned long courtesyLightTimer = 0;
  boolean tagRead = false;
  SoftwareSerial RFID(RFID_SOUT, 12);
 
@@ -64,7 +63,6 @@ void setup()
   pinMode(RED_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
   pinMode(BLUE_LED, OUTPUT);
-  pinMode(COURTESY_LIGHT, OUTPUT);
   
   digitalWrite(RFID_ENABLE, LOW);    //prepare RFID reader to accept data
   resetLEDS();
@@ -87,14 +85,11 @@ void setup()
 
 void loop()
 {
-  courtesyLightCheck();
   if(readCard())
   {
      digitalWrite(RFID_ENABLE, HIGH);
      if ((!doorUnlocked) && checkAccess(curTag,true))
      {
-       
-       courtesyLightOn(30000);
        openDoor();
        delay(15000);  //wait 15 seconds before locking door again
        closeDoor();
@@ -115,7 +110,6 @@ void loop()
     }
     else
     {
-      courtesyLightOn(30000);
       closeDoor();
     }
   }
@@ -226,7 +220,7 @@ void programKey()
   if (checkAccess(curTag,false))
   {
     //the card already exists in the db.  remove it. 
-     blinkAndDelay(1500, RED_LED, 150);
+     blinkAndDelay(1500, RED_LED, 100);
      
      for (int i=1; i <= numTagInMem; i++)
      {
@@ -258,7 +252,7 @@ void programKey()
      {
        EEPROM.write((numTagInMem * 10)+loc+1,curTag.charAt(loc));
      }    
-     blinkAndDelay(1500, GREEN_LED, 150);
+     blinkAndDelay(500, GREEN_LED, 150);
   } 
 }
 
@@ -444,18 +438,3 @@ void blinkAndDelay(int delayTime, int pin)
 {
   blinkAndDelay(delayTime, pin, 250);
 }
-
-void courtesyLightOn(int delayTime) {
-  digitalWrite(COURTESY_LIGHT, HIGH);
-  courtesyLightTimer = millis() + delayTime;
-}
-
-void courtesyLightCheck() {
-  if (courtesyLightTimer != 0) {
-    if (courtesyLightTimer < millis()) {
-      courtesyLightTimer = 0;
-      digitalWrite(COURTESY_LIGHT, LOW);
-    }
-  }
-}
-  
