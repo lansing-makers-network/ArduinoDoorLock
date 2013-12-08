@@ -47,7 +47,7 @@
  boolean tagRead = false;
  SoftwareSerial RFID(RFID_SOUT, 12);
 
- Bounce keepOpenInput = Bounce(KEEP_OPEN, 10);
+ Bounce keepOpenInput = Bounce(KEEP_OPEN, 250);
  
 void setup() 
 { 
@@ -78,8 +78,6 @@ void setup()
   }
   numTagInMem = EEPROM.read(0);
   
-  
-  
   Serial.println("Lansing Makers Network Door Access System.  Valid commands are (r,i,d,h,o,c)");
 }
 
@@ -98,6 +96,7 @@ void loop()
      {
        blinkAndDelay(2000, RED_LED);
      }
+     delay(250);
      clearSerialBuffer();     
      digitalWrite(RFID_ENABLE, LOW);
   }
